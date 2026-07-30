@@ -1,0 +1,38 @@
+<!-- features/auth/register/register.component.html -->
+<div class="d-flex justify-content-center align-items-center vh-100 bg-light">
+  <div class="card p-4 shadow-sm" style="width: 380px;">
+    <h4 class="text-center mb-4">
+      <i class="bi bi-person-plus-fill me-2"></i>Crear cuenta
+    </h4>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="mb-3">
+        <label class="form-label">Usuario</label>
+        <input type="text" class="form-control" formControlName="nombreUsuario"
+               placeholder="Nombre de usuario"
+               [class.is-invalid]="form.get('nombreUsuario')?.invalid && form.get('nombreUsuario')?.touched">
+        <div class="invalid-feedback">Mínimo 4 caracteres.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-control" formControlName="password"
+               placeholder="Contraseña"
+               [class.is-invalid]="form.get('password')?.invalid && form.get('password')?.touched">
+        <div class="invalid-feedback">Mínimo 6 caracteres.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Rol</label>
+        <select class="form-select" formControlName="rol">
+          <option value="Usuario">Usuario (solo lectura)</option>
+          <option value="Admin">Administrador</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary w-100" [disabled]="loading">
+        <i class="bi bi-check-lg me-1"></i>
+        {{ loading ? 'Registrando...' : 'Registrarme' }}
+      </button>
+    </form>
+    <p class="text-center mt-3 mb-0">
+      ¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a>
+    </p>
+  </div>
+</div>

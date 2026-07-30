@@ -1,0 +1,29 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+  <div class="container">
+    <a class="navbar-brand fw-bold" routerLink="/estudiantes">
+      <i class="bi bi-mortarboard-fill me-2"></i>Audisoft &middot; Prueba Técnica .NET
+    </a>
+    <div class="navbar-nav">
+      <a class="nav-link" routerLink="/estudiantes" routerLinkActive="active">
+        <i class="bi bi-people-fill me-1"></i> Estudiantes
+      </a>
+      <a class="nav-link" routerLink="/profesores" routerLinkActive="active">
+        <i class="bi bi-person-workspace me-1"></i> Profesores
+      </a>
+      <a class="nav-link" routerLink="/notas" routerLinkActive="active">
+        <i class="bi bi-journal-check me-1"></i> Notas
+      </a>
+
+      <button
+        *ngIf="authService.isAuthenticated()"
+        class="btn btn-outline-light btn-sm ms-3"
+        (click)="logout()">
+        <i class="bi bi-box-arrow-right me-1"></i> Salir
+      </button>
+
+      <a *ngIf="!authService.isAuthenticated()" class="nav-link" routerLink="/login">
+        <i class="bi bi-box-arrow-in-right me-1"></i> Ingresar
+      </a>
+    </div>
+  </div>
+</nav>
