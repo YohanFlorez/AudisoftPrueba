@@ -1,4 +1,4 @@
-﻿// AudisoftPrueba.API/Controllers/AuthController.cs
+﻿
 using AudisoftPrueba.Application.DTOs.Auth;
 using AudisoftPrueba.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;

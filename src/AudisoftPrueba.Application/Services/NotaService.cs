@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+using AudisoftPrueba.Application.Common;
 using AudisoftPrueba.Application.DTOs.Nota;
 using AudisoftPrueba.Application.Exceptions;
 using AudisoftPrueba.Application.Interfaces;
@@ -16,6 +18,55 @@ public class NotaService : CrudServiceBase<Nota, NotaDto, NotaCreateDto, NotaUpd
     {
         _notaRepository = unitOfWork.Notas;
     }
+
+    public async Task<PagedResult<NotaDto>> GetPagedAsync(
+        NotaFilterParams filters, CancellationToken cancellationToken = default)
+    {
+        var filter = BuildFilter(filters);
+
+        var (items, total) = await Repository.GetPagedAsync(
+            filters.PageNumber, filters.PageSize, filter: filter, cancellationToken: cancellationToken);
+
+        return new PagedResult<NotaDto>
+        {
+            Items = Mapper.Map<IReadOnlyList<NotaDto>>(items),
+            PageNumber = filters.PageNumber,
+            PageSize = filters.PageSize,
+            TotalCount = total
+        };
+    }
+
+    private static Expression<Func<Nota, bool>>? BuildFilter(NotaFilterParams f)
+    {
+        Expression<Func<Nota, bool>>? filter = null;
+
+        if (!string.IsNullOrWhiteSpace(f.Nombre))
+        {
+            var nombre = f.Nombre.Trim().ToLower();
+            filter = Combine(filter, n => n.Nombre.ToLower().Contains(nombre));
+        }
+
+        if (f.Valor.HasValue)
+        {
+            filter = Combine(filter, n => n.Valor == f.Valor.Value);
+        }
+
+        if (f.IdEstudiante.HasValue)
+        {
+            filter = Combine(filter, n => n.IdEstudiante == f.IdEstudiante.Value);
+        }
+
+        if (f.IdProfesor.HasValue)
+        {
+            filter = Combine(filter, n => n.IdProfesor == f.IdProfesor.Value);
+        }
+
+        return filter;
+    }
+
+    private static Expression<Func<Nota, bool>> Combine(
+        Expression<Func<Nota, bool>>? current, Expression<Func<Nota, bool>> next) =>
+        current is null ? next : current.And(next);
 
     protected override async Task ValidateBusinessRulesAsync(NotaCreateDto dto, CancellationToken cancellationToken)
     {
@@ -37,7 +88,6 @@ public class NotaService : CrudServiceBase<Nota, NotaDto, NotaCreateDto, NotaUpd
         {
             throw new BusinessRuleException($"El profesor con id {idProfesor} no existe.");
         }
-
         if (!await _notaRepository.EstudianteExisteAsync(idEstudiante, cancellationToken))
         {
             throw new BusinessRuleException($"El estudiante con id {idEstudiante} no existe.");

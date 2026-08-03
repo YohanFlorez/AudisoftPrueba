@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ProfesorService } from '../../core/services/profesor.service';
 import { AlertService } from '../../core/services/alert.service';
@@ -8,12 +7,22 @@ import { Profesor } from '../../core/models/profesor.model';
 import { PagedResult } from '../../core/models/paged-result.model';
 import { extractErrorMessage } from '../../core/utils/error.util';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { SearchBoxComponent } from '../../shared/components/search-box/search-box.component';
 import { IsAdminDirective } from '../../shared/directives/is-admin.directive';
+import { ProfesorFormModalComponent } from './profesor-form-modal/profesor-form-modal.component';
+import { ProfesorDetailModalComponent } from './profesor-detail-modal/profesor-detail-modal.component';
 
 @Component({
   selector: 'app-profesores',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PaginationComponent, IsAdminDirective],
+  imports: [
+    CommonModule,
+    PaginationComponent,
+    SearchBoxComponent,
+    IsAdminDirective,
+    ProfesorFormModalComponent,
+    ProfesorDetailModalComponent
+  ],
   templateUrl: './profesores.component.html'
 })
 export class ProfesoresComponent implements OnInit {
@@ -21,25 +30,18 @@ export class ProfesoresComponent implements OnInit {
   pageNumber = 1;
   pageSize = 5;
   loading = false;
+  searchTerm = '';
 
   showModal = false;
-  isEditing = false;
-  form: FormGroup;
-  private editingId: number | null = null;
+  profesorAEditar: Profesor | null = null;
 
   showDetailModal = false;
-  selectedProfesor: Profesor | null = null;
-  loadingDetail = false;
+  profesorIdSeleccionado: number | null = null;
 
   constructor(
     private readonly profesorService: ProfesorService,
-    private readonly alert: AlertService,
-    private readonly fb: FormBuilder
-  ) {
-    this.form = this.fb.group({
-      nombre: ['', [Validators.required, Validators.maxLength(150)]]
-    });
-  }
+    private readonly alert: AlertService
+  ) {}
 
   ngOnInit(): void {
     this.load();
@@ -47,7 +49,7 @@ export class ProfesoresComponent implements OnInit {
 
   load(): void {
     this.loading = true;
-    this.profesorService.getPaged(this.pageNumber, this.pageSize).subscribe({
+    this.profesorService.getPaged(this.pageNumber, this.pageSize, this.searchTerm || undefined).subscribe({
       next: (result) => {
         this.paged = result;
         this.loading = false;
@@ -59,45 +61,34 @@ export class ProfesoresComponent implements OnInit {
     });
   }
 
+  onSearchChange(term: string): void {
+    this.searchTerm = term;
+    this.pageNumber = 1;
+    this.load();
+  }
+
   onPageChange(page: number): void {
     this.pageNumber = page;
     this.load();
   }
 
   openDetail(profesor: Profesor): void {
+    this.profesorIdSeleccionado = profesor.id;
     this.showDetailModal = true;
-    this.loadingDetail = true;
-    this.selectedProfesor = null;
-
-    this.profesorService.getById(profesor.id).subscribe({
-      next: (data) => {
-        this.selectedProfesor = data;
-        this.loadingDetail = false;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.loadingDetail = false;
-        this.showDetailModal = false;
-        this.alert.error(extractErrorMessage(err));
-      }
-    });
   }
 
   closeDetailModal(): void {
     this.showDetailModal = false;
-    this.selectedProfesor = null;
+    this.profesorIdSeleccionado = null;
   }
 
   openCreate(): void {
-    this.isEditing = false;
-    this.editingId = null;
-    this.form.reset();
+    this.profesorAEditar = null;
     this.showModal = true;
   }
 
   openEdit(profesor: Profesor): void {
-    this.isEditing = true;
-    this.editingId = profesor.id;
-    this.form.setValue({ nombre: profesor.nombre });
+    this.profesorAEditar = profesor;
     this.showModal = true;
   }
 
@@ -105,26 +96,9 @@ export class ProfesoresComponent implements OnInit {
     this.showModal = false;
   }
 
-  save(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
-    const dto = { nombre: this.form.value.nombre };
-
-    const request$ = this.isEditing && this.editingId
-      ? this.profesorService.update(this.editingId, dto)
-      : this.profesorService.create(dto);
-
-    request$.subscribe({
-      next: () => {
-        this.showModal = false;
-        this.alert.success(this.isEditing ? 'Profesor actualizado correctamente' : 'Profesor creado correctamente');
-        this.load();
-      },
-      error: (err: HttpErrorResponse) => this.alert.error(extractErrorMessage(err))
-    });
+  onSaved(): void {
+    this.showModal = false;
+    this.load();
   }
 
   async remove(profesor: Profesor): Promise<void> {

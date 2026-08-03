@@ -1,0 +1,16 @@
+<div class="input-group" style="max-width: 350px;">
+  <span class="input-group-text"><i class="bi bi-search"></i></span>
+  <input
+    type="text"
+    class="form-control"
+    [placeholder]="placeholder"
+    [formControl]="searchControl">
+  <button
+    *ngIf="searchControl.value"
+    class="btn btn-outline-secondary"
+    type="button"
+    (click)="clear()"
+    title="Limpiar búsqueda">
+    <i class="bi bi-x-lg"></i>
+  </button>
+</div>

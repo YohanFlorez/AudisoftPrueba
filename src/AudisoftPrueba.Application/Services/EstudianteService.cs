@@ -4,6 +4,7 @@ using AudisoftPrueba.Application.Interfaces;
 using AudisoftPrueba.Domain.Entities;
 using AudisoftPrueba.Domain.Interfaces;
 using AutoMapper;
+using System.Linq.Expressions;
 
 namespace AudisoftPrueba.Application.Services;
 
@@ -26,5 +27,10 @@ public class EstudianteService
 
         Repository.Remove(estudiante);
         await UnitOfWork.SaveChangesAsync(cancellationToken);
+    }
+    protected override Expression<Func<Estudiante, bool>>? BuildSearchFilter(string search)
+    {
+        var normalized = search.ToLower();
+        return e => e.Nombre.ToLower().Contains(normalized);
     }
 }

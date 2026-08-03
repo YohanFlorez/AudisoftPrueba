@@ -17,10 +17,10 @@ public abstract class CrudControllerBase<TReadDto, TCreateDto, TUpdateDto> : Con
         _service = service;
     }
 
-    // Lectura: cualquier usuario autenticado (Admin o Usuario)
+    /// Lectura: cualquier usuario autenticado (Admin o Usuario)
     [Authorize]
     [HttpGet]
-    public async Task<ActionResult<PagedResult<TReadDto>>> GetPaged(
+    public virtual async Task<ActionResult<PagedResult<TReadDto>>> GetPaged(
         [FromQuery] PaginationParams pagination, CancellationToken cancellationToken)
     {
         var result = await _service.GetPagedAsync(pagination, cancellationToken);

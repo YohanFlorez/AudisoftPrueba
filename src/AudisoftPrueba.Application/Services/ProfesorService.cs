@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using AudisoftPrueba.Application.DTOs.Profesor;
 using AudisoftPrueba.Application.Exceptions;
 using AudisoftPrueba.Application.Interfaces;
@@ -26,5 +27,11 @@ public class ProfesorService
 
         Repository.Remove(profesor);
         await UnitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    protected override Expression<Func<Profesor, bool>>? BuildSearchFilter(string search)
+    {
+        var normalized = search.ToLower();
+        return p => p.Nombre.ToLower().Contains(normalized);
     }
 }

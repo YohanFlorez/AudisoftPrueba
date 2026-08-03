@@ -8,6 +8,6 @@ namespace AudisoftPrueba.API.Controllers;
 public class EstudiantesController : CrudControllerBase<EstudianteDto, EstudianteCreateDto, EstudianteUpdateDto>
 {
     public EstudiantesController(IEstudianteService service) : base(service)
-    {
+    {  
     }
 }

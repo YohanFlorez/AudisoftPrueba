@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
-import { NotaService } from '../../core/services/nota.service';
+import { forkJoin, Subject, takeUntil } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { NotaService, NotaFilters } from '../../core/services/nota.service';
 import { EstudianteService } from '../../core/services/estudiante.service';
 import { ProfesorService } from '../../core/services/profesor.service';
 import { AlertService } from '../../core/services/alert.service';
@@ -14,16 +15,25 @@ import { PagedResult } from '../../core/models/paged-result.model';
 import { extractErrorMessage } from '../../core/utils/error.util';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { IsAdminDirective } from '../../shared/directives/is-admin.directive';
+import { NotaFormModalComponent } from './nota-form-modal/nota-form-modal.component';
+import { NotaDetailModalComponent } from './nota-detail-modal/nota-detail-modal.component';
 
 const COMBO_PAGE_SIZE = 100;
 
 @Component({
   selector: 'app-notas',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PaginationComponent, IsAdminDirective],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    PaginationComponent,
+    IsAdminDirective,
+    NotaFormModalComponent,
+    NotaDetailModalComponent
+  ],
   templateUrl: './notas.component.html'
 })
-export class NotasComponent implements OnInit {
+export class NotasComponent implements OnInit, OnDestroy {
   paged?: PagedResult<Nota>;
   pageNumber = 1;
   pageSize = 5;
@@ -32,14 +42,14 @@ export class NotasComponent implements OnInit {
   estudiantes: Estudiante[] = [];
   profesores: Profesor[] = [];
 
+  filterForm: FormGroup;
+  private readonly destroy$ = new Subject<void>();
+
   showModal = false;
-  isEditing = false;
-  form: FormGroup;
-  private editingId: number | null = null;
+  selectedNota: Nota | null = null;
 
   showDetailModal = false;
-  selectedNota: Nota | null = null;
-  loadingDetail = false;
+  selectedNotaId: number | null = null;
 
   constructor(
     private readonly notaService: NotaService,
@@ -48,22 +58,57 @@ export class NotasComponent implements OnInit {
     private readonly alert: AlertService,
     private readonly fb: FormBuilder
   ) {
-    this.form = this.fb.group({
-      nombre: ['', [Validators.required, Validators.maxLength(150)]],
-      valor: [null, [Validators.required, Validators.min(0), Validators.max(5)]],
-      idProfesor: [null, [Validators.required]],
-      idEstudiante: [null, [Validators.required]]
+    this.filterForm = this.fb.group({
+      nombre: [''],
+      valor: [null],
+      idEstudiante: [null],
+      idProfesor: [null]
     });
   }
 
   ngOnInit(): void {
     this.load();
     this.loadCombos();
+
+    this.filterForm.valueChanges
+      .pipe(
+        debounceTime(400),
+        distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        this.pageNumber = 1;
+        this.load();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private buildFilters(): NotaFilters {
+    const raw = this.filterForm.value;
+    return {
+      nombre: raw.nombre?.trim() || undefined,
+      valor: raw.valor !== null && raw.valor !== '' ? Number(raw.valor) : undefined,
+      idEstudiante: raw.idEstudiante ?? undefined,
+      idProfesor: raw.idProfesor ?? undefined
+    };
+  }
+
+  hasActiveFilters(): boolean {
+    const f = this.buildFilters();
+    return !!(f.nombre || f.valor !== undefined || f.idEstudiante || f.idProfesor);
+  }
+
+  clearFilters(): void {
+    this.filterForm.reset({ nombre: '', valor: null, idEstudiante: null, idProfesor: null });
   }
 
   load(): void {
     this.loading = true;
-    this.notaService.getPaged(this.pageNumber, this.pageSize).subscribe({
+    this.notaService.getPagedFiltered(this.pageNumber, this.pageSize, this.buildFilters()).subscribe({
       next: (result) => {
         this.paged = result;
         this.loading = false;
@@ -94,77 +139,32 @@ export class NotasComponent implements OnInit {
   }
 
   openDetail(nota: Nota): void {
+    this.selectedNotaId = nota.id;
     this.showDetailModal = true;
-    this.loadingDetail = true;
-    this.selectedNota = null;
-
-    this.notaService.getById(nota.id).subscribe({
-      next: (data) => {
-        this.selectedNota = data;
-        this.loadingDetail = false;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.loadingDetail = false;
-        this.showDetailModal = false;
-        this.alert.error(extractErrorMessage(err));
-      }
-    });
   }
 
-  closeDetailModal(): void {
+  onDetailClosed(): void {
     this.showDetailModal = false;
-    this.selectedNota = null;
+    this.selectedNotaId = null;
   }
 
   openCreate(): void {
-    this.isEditing = false;
-    this.editingId = null;
-    this.form.reset();
+    this.selectedNota = null;
     this.showModal = true;
   }
 
   openEdit(nota: Nota): void {
-    this.isEditing = true;
-    this.editingId = nota.id;
-    this.form.setValue({
-      nombre: nota.nombre,
-      valor: nota.valor,
-      idProfesor: nota.idProfesor,
-      idEstudiante: nota.idEstudiante
-    });
+    this.selectedNota = nota;
     this.showModal = true;
   }
 
-  closeModal(): void {
+  onFormSaved(): void {
     this.showModal = false;
+    this.load();
   }
 
-  save(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
-    const raw = this.form.value;
-    const dto = {
-      nombre: raw.nombre,
-      valor: Number(raw.valor),
-      idProfesor: Number(raw.idProfesor),
-      idEstudiante: Number(raw.idEstudiante)
-    };
-
-    const request$ = this.isEditing && this.editingId
-      ? this.notaService.update(this.editingId, dto)
-      : this.notaService.create(dto);
-
-    request$.subscribe({
-      next: () => {
-        this.showModal = false;
-        this.alert.success(this.isEditing ? 'Nota actualizada correctamente' : 'Nota creada correctamente');
-        this.load();
-      },
-      error: (err: HttpErrorResponse) => this.alert.error(extractErrorMessage(err))
-    });
+  onFormCancelled(): void {
+    this.showModal = false;
   }
 
   async remove(nota: Nota): Promise<void> {

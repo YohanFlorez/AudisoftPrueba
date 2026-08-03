@@ -42,7 +42,8 @@ export class RegisterComponent {
       next: () => {
         this.loading = false;
         this.alert.success('Usuario registrado correctamente');
-        this.router.navigate(['/estudiantes']);
+        this.authService.logout();
+        this.router.navigate(['/login']);
       },
       error: (err: HttpErrorResponse) => {
         this.loading = false;

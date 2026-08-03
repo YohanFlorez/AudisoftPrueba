@@ -34,6 +34,18 @@ public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
     public virtual async Task<T?> GetByIdAsync(int id, CancellationToken cancellationToken = default) =>
         await Query.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
+    // ------------------------------------------------------------------
+    // NUEVO: método pensado exclusivamente para operaciones de escritura
+    // (Update). A diferencia de GetByIdAsync:
+    //   - NO aplica los Include() definidos en "Query" de repositorios
+    //     concretos (evita traer navegaciones "viejas" que EF podría
+    //     priorizar sobre las FKs escalares nuevas al hacer SaveChanges).
+    //   - SÍ trackea la entidad (no usa AsNoTracking), que es lo correcto
+    //     para poder modificarla y persistir los cambios.
+    // ------------------------------------------------------------------
+    public virtual async Task<T?> GetByIdForUpdateAsync(int id, CancellationToken cancellationToken = default) =>
+        await DbSet.FindAsync(new object[] { id }, cancellationToken);
+
     public virtual async Task<(IReadOnlyList<T> Items, int TotalCount)> GetPagedAsync(
         int pageNumber,
         int pageSize,
@@ -41,19 +53,15 @@ public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
         CancellationToken cancellationToken = default)
     {
         var query = Query.AsNoTracking();
-
         if (filter is not null)
         {
             query = query.Where(filter);
         }
-
         var totalCount = await query.CountAsync(cancellationToken);
-
         var items = await query
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
-
         return (items, totalCount);
     }
 
@@ -71,8 +79,8 @@ public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
     public virtual void Remove(T entity) => DbSet.Remove(entity);
 
     public async Task<bool> AnyAsync(
-    Expression<Func<T, bool>> predicate,
-    CancellationToken cancellationToken = default)
+        Expression<Func<T, bool>> predicate,
+        CancellationToken cancellationToken = default)
     {
         return await DbSet.AnyAsync(predicate, cancellationToken);
     }

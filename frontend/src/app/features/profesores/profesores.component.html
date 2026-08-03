@@ -6,6 +6,13 @@
     </button>
   </div>
 
+  <div class="mb-3">
+    <app-search-box
+      placeholder="Buscar por nombre..."
+      (searchChange)="onSearchChange($event)">
+    </app-search-box>
+  </div>
+
   <div class="table-responsive">
     <table class="table table-hover align-middle">
       <thead>
@@ -32,7 +39,9 @@
           </td>
         </tr>
         <tr *ngIf="!loading && paged?.items?.length === 0">
-          <td colspan="3" class="text-center text-muted py-4">No hay profesores registrados.</td>
+          <td colspan="3" class="text-center text-muted py-4">
+            {{ searchTerm ? 'No se encontraron profesores para "' + searchTerm + '".' : 'No hay profesores registrados.' }}
+          </td>
         </tr>
         <tr *ngIf="loading">
           <td colspan="3" class="text-center text-muted py-4">Cargando...</td>
@@ -52,59 +61,15 @@
   </app-pagination>
 </div>
 
-<!-- Modal Crear / Editar -->
-<div class="modal-backdrop fade show" *ngIf="showModal"></div>
-<div class="modal fade show d-block" tabindex="-1" *ngIf="showModal">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form [formGroup]="form" (ngSubmit)="save()">
-        <div class="modal-header">
-          <h5 class="modal-title">{{ isEditing ? 'Editar' : 'Nuevo' }} profesor</h5>
-          <button type="button" class="btn-close" (click)="closeModal()"></button>
-        </div>
-        <div class="modal-body">
-          <label class="form-label">Nombre</label>
-          <input type="text" class="form-control" formControlName="nombre" placeholder="Nombre del profesor"
-                 [class.is-invalid]="form.get('nombre')?.invalid && form.get('nombre')?.touched">
-          <div class="invalid-feedback">El nombre es obligatorio (máx. 150 caracteres).</div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" (click)="closeModal()">Cancelar</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check-lg me-1"></i> Guardar
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
+<app-profesor-form-modal
+  *ngIf="showModal"
+  [profesor]="profesorAEditar"
+  (saved)="onSaved()"
+  (cancelled)="closeModal()">
+</app-profesor-form-modal>
 
-<!-- Modal Ver detalle -->
-<div class="modal-backdrop fade show" *ngIf="showDetailModal"></div>
-<div class="modal fade show d-block" tabindex="-1" *ngIf="showDetailModal">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">
-          <i class="bi bi-eye me-2"></i>Detalle del profesor
-        </h5>
-        <button type="button" class="btn-close" (click)="closeDetailModal()"></button>
-      </div>
-      <div class="modal-body">
-        <div *ngIf="loadingDetail" class="text-center text-muted py-3">
-          Cargando...
-        </div>
-        <dl class="row mb-0" *ngIf="!loadingDetail && selectedProfesor">
-          <dt class="col-sm-4">Id</dt>
-          <dd class="col-sm-8">{{ selectedProfesor.id }}</dd>
-
-          <dt class="col-sm-4">Nombre</dt>
-          <dd class="col-sm-8">{{ selectedProfesor.nombre }}</dd>
-        </dl>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" (click)="closeDetailModal()">Cerrar</button>
-      </div>
-    </div>
-  </div>
-</div>
+<app-profesor-detail-modal
+  *ngIf="showDetailModal && profesorIdSeleccionado !== null"
+  [profesorId]="profesorIdSeleccionado"
+  (closed)="closeDetailModal()">
+</app-profesor-detail-modal>

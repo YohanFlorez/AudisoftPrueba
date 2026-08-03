@@ -1,0 +1,28 @@
+<div class="modal-backdrop fade show"></div>
+<div class="modal fade show d-block" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-eye me-2"></i>Detalle del estudiante
+        </h5>
+        <button type="button" class="btn-close" (click)="close()"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="loading" class="text-center text-muted py-3">
+          Cargando...
+        </div>
+        <dl class="row mb-0" *ngIf="!loading && estudiante">
+          <dt class="col-sm-4">Id</dt>
+          <dd class="col-sm-8">{{ estudiante.id }}</dd>
+
+          <dt class="col-sm-4">Nombre</dt>
+          <dd class="col-sm-8">{{ estudiante.nombre }}</dd>
+        </dl>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="close()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
